@@ -1,0 +1,166 @@
+Sure! Here’s how you can break up the script into `%pre`, `%post`, and `%firstboot` sections:
+
+### %pre Section
+The `%pre` section is used for tasks that need to be done before the installation begins. This can include setting up partitions, configuring network settings, or other preparatory tasks.
+
+### %post Section
+The `%post` section is used for tasks that need to be done after the installation is complete but before the first boot. This can include installing additional packages, configuring services, or other post-installation tasks.
+
+### %firstboot Section
+The `%firstboot` section is used for tasks that need to be done when the system boots for the first time. This can include final configuration steps, user setup, or other tasks that need to be done on first boot.
+
+### Updated Kickstart Script
+
+```bash
+# Kickstart configuration
+
+# %pre section
+%pre --interpreter=/usr/bin/python
+import os
+import base64
+import subprocess
+import string
+import random
+
+# Function to generate a random password
+def generate_random_password(length=12):
+    characters = string.ascii_letters + string.digits + string.punctuation
+    password = ''.join(random.choice(characters) for i in range(length))
+    return password
+
+# Function to generate a random salt
+def generate_random_salt(length=12):
+    salt = base64.b64encode(os.urandom(length)).decode('utf-8')
+    return salt
+
+# Generate random password and salt for root user
+root_password = generate_random_password()
+root_salt = generate_random_salt()
+root_hashed_password = subprocess.run(['openssl', 'passwd', '-6', '-salt', root_salt, root_password], capture_output=True, text=True).stdout.strip()
+
+# Generate random password and salt for admin user
+admin_password = generate_random_password()
+admin_salt = generate_random_salt()
+admin_hashed_password = subprocess.run(['openssl', 'passwd', '-6', '-salt', admin_salt, admin_password], capture_output=True, text=True).stdout.strip()
+
+# Print the generated passwords (for one-time display)
+print(f"Generated root password: {root_password}")
+print(f"Generated admin password: {admin_password}")
+
+# Save passwords to a file for later use
+with open('/tmp/passwords.txt', 'w') as file:
+    file.write(f"root_password={root_password}\n")
+    file.write(f"admin_password={admin_password}\n")
+%end
+
+# %post section
+%post --interpreter=/usr/bin/python
+import subprocess
+
+# Read passwords from the file
+with open('/tmp/passwords.txt', 'r') as file:
+    lines = file.readlines()
+    root_password = lines[0].split('=')[1].strip()
+    admin_password = lines[1].split('=')[1].strip()
+
+# Set the root password (hashed)
+subprocess.run(['echo', f'root:{root_hashed_password}', '|', 'chpasswd', '--encrypted'])
+
+# Add a super user called admin and set the password (hashed)
+subprocess.run(['useradd', 'admin'])
+subprocess.run(['echo', f'admin:{admin_hashed_password}', '|', 'chpasswd', '--encrypted'])
+subprocess.run(['usermod', '-aG', 'wheel', 'admin'])
+
+# Install required packages
+subprocess.run(['yum', 'install', '-y', 'ipa-client', 'realmd', 'sssd', 'oddjob', 'oddjob-mkhomedir', 'adcli', 'samba-common-tools', 'krb5-workstation', 'authselect-compat', 'openssl'])
+
+# Discover the FreeIPA domain
+subprocess.run(['realm', 'discover', 'ipa.example.com'])
+
+# Join the FreeIPA domain without a password
+subprocess.run(['ipa-client-install', '--hostname=$(hostname -f)', '--mkhomedir', '--ssh-trust-dns', '--no-ntp', '--principal=admin', '--password=' + admin_password, '--force-join'])
+
+# Enable and start SSSD service
+subprocess.run(['systemctl', 'enable', 'sssd'])
+subprocess.run(['systemctl', 'start', 'sssd'])
+
+# Configure SSSD
+subprocess.run(['authselect', 'select', 'sssd', 'with-mkhomedir', '--force'])
+
+# Create a self-signed certificate with FreeIPA CA
+subprocess.run(['ipa-getcert', 'request', '-f', '/etc/pki/tls/certs/ipa_cert.pem', '-k', '/etc/pki/tls/private/ipa_key.pem', '-N', 'CN=hostname.example.com', '-K', 'host/hostname.example.com'])
+
+# Replace yum repos with local repos
+with open('/etc/yum.repos.d/local.repo', 'w') as repo_file:
+    repo_file.write("""[local]
+name=Local Repository
+baseurl=file:///mnt/localrepo
+enabled=1
+gpgcheck=0
+""")
+
+# Mount the local repository
+subprocess.run(['mkdir', '-p', '/mnt/localrepo'])
+subprocess.run(['mount', '-o', 'loop', '/path/to/localrepo.iso', '/mnt/localrepo'])
+
+# Create SSH keys
+subprocess.run(['ssh-keygen', '-t', 'rsa', '-b', '4096', '-f', '/root/.ssh/id_rsa', '-N', ''])
+
+# Use certificates to mount and connect with Synology file share
+subprocess.run(['mkdir', '-p', '/mnt/synology'])
+subprocess.run(['mount', '-t', 'cifs', '//synology.example.com/share', '/mnt/synology', '-o', 'username=admin,password=' + admin_password, 'vers=3.0', 'sec=ntlmssp', 'cruid=admin', 'domain=example.com', 'iocharset=utf8', 'sec=krb5', 'cruid=admin', 'credentials=/etc/samba/credentials'])
+
+# Create credentials file for Synology
+with open('/etc/samba/credentials', 'w') as cred_file:
+    cred_file.write(f"""username=admin
+password={admin_password}
+domain=example.com
+""")
+subprocess.run(['chmod', '600', '/etc/samba/credentials'])
+
+%end
+
+# %firstboot section
+%firstboot --interpreter=/usr/bin/python
+import subprocess
+
+# Read passwords from the file
+with open('/tmp/passwords.txt', 'r') as file:
+    lines = file.readlines()
+    root_password = lines[0].split('=')[1].strip()
+    admin_password = lines[1].split('=')[1].strip()
+
+# Print the generated passwords (for one-time display)
+print(f"Generated root password: {root_password}")
+print(f"Generated admin password: {admin_password}")
+
+# Clean up the passwords file
+subprocess.run(['rm', '-f', '/tmp/passwords.txt'])
+
+%end
+```
+
+### Explanation
+1. **%pre Section:**
+   - Generates random passwords and salts for the root and admin users.
+   - Prints the generated passwords for one-time display.
+   - Saves the passwords to a temporary file for later use.
+
+2. **%post Section:**
+   - Reads the passwords from the temporary file.
+   - Sets the root and admin passwords.
+   - Adds the admin user to the wheel group.
+   - Installs required packages and configures the system.
+   - Joins the FreeIPA domain.
+   - Configures SSSD and creates a self-signed certificate.
+   - Replaces YUM repositories with local repositories.
+   - Creates SSH keys and mounts the Synology file share.
+
+3. **%firstboot Section:**
+   - Reads the passwords from the temporary file.
+   - Prints the generated passwords for one-time display.
+   - Cleans up the temporary passwords file.
+
+Make sure to replace placeholders like `ipa.example.com`, `hostname.example.com`, `admin`, and `/path/to/localrepo.iso` with your actual values.
+
+Would you like any further customization or additional details on any of these steps?
