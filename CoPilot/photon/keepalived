@@ -1,0 +1,87 @@
+photon os, keepalived
+Copilot said:
+Copilot
+Photon OS is a minimal Linux container host optimized for VMware environments. It is designed to be lightweight and efficient, making it ideal for running containers and virtual machines.
+
+Keepalived is a high-availability and load-balancing solution that works well with Photon OS. It provides robust keepalive functionality for Linux Virtual Server (LVS) and implements the Virtual Router Redundancy Protocol (VRRP) to handle failover scenarios1.
+
+To set up Keepalived on Photon OS, you can follow these general steps:
+
+Install Keepalived:
+
+tdnf install keepalived -y
+Configure Keepalived:
+
+Edit the configuration file located at /etc/keepalived/keepalived.conf.
+Define the VRRP instances and scripts to monitor your services.
+Enable and Start Keepalived:
+
+systemctl enable keepalived
+systemctl start keepalived
+For a detailed guide on setting up Keepalived with Photon OS, including load balancing with HAProxy, you can refer to resources like the VMware Horizon/AppVolumes LB with HAProxy and Keepalived on PhotonOS blog2.
+
+Is there a specific aspect of Keepalived or Photon OS you're interested in?
+
+
+1
+photon/SPECS/keepalived/keepalived.spec at master - GitHub
+
+2
+VMware Horizon/AppVolumes LB with HAProxy and Keepalived on PhotonOS
+
+Edit in Pages
+
+
+
+
+AI-generated content may be incorrect
+You said:
+
+How to configure VRRP in Keepalived?
+Copilot said:
+Copilot
+Configuring VRRP (Virtual Router Redundancy Protocol) in Keepalived involves setting up a virtual IP address that can be managed by multiple nodes to ensure high availability. Here's a step-by-step guide to help you get started:
+
+Install Keepalived:
+
+sudo apt-get update
+sudo apt-get install keepalived
+Backup the Default Configuration:
+
+sudo mv /etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf.original
+Create a New Configuration File:
+
+sudo nano /etc/keepalived/keepalived.conf
+Configure VRRP: Add the following configuration to the keepalived.conf file:
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 51
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass your_password
+    }
+    virtual_ipaddress {
+        192.168.1.100
+    }
+}
+state: Defines the initial state of the instance (MASTER or BACKUP).
+interface: The network interface to run VRRP on.
+virtual_router_id: A unique identifier for the VRRP instance.
+priority: The priority of the node (higher value means higher priority).
+advert_int: Advertisement interval in seconds.
+authentication: Authentication type and password.
+virtual_ipaddress: The virtual IP address to be managed.
+Start and Enable Keepalived:
+
+sudo systemctl start keepalived
+sudo systemctl enable keepalived
+Verify the Configuration: Check the status of Keepalived to ensure it's running correctly:
+
+sudo systemctl status keepalived
+This basic configuration sets up a VRRP instance with a virtual IP address that will be managed by Keepalived. If the MASTER node fails, a BACKUP node with a lower priority will take over the virtual IP address, ensuring high availability12.
+
+Do you need help with any specific part of this setup?

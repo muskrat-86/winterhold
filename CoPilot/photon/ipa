@@ -1,0 +1,19 @@
+photon os, join ipa
+Copilot said:
+Copilot
+To join Photon OS to an IPA (Identity, Policy, Audit) domain, you'll need to follow a few steps. Here's a general outline:
+
+Install Required Packages: Ensure you have the necessary packages installed. You might need to install freeipa-client and other dependencies.
+
+tdnf install freeipa-client
+Configure Network: Make sure your Photon OS has a proper network configuration. You can set a static IP if needed. Configuration files are typically located in /etc/systemd/network/.
+
+Join the IPA Domain: Use the ipa-client-install command to join the domain. You'll need the IPA server's address and admin credentials.
+
+ipa-client-install --domain=yourdomain.com --server=ipa.yourdomain.com --realm=YOURDOMAIN.COM
+Verify the Configuration: After joining, verify that the configuration is correct and that the system is properly integrated into the IPA domain.
+
+ipa user-find
+For more detailed instructions, you can refer to the Photon OS documentation1.
+
+If you have any specific questions or run into issues, feel free to ask!

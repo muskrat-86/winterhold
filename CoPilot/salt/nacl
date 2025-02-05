@@ -1,0 +1,42 @@
+To encrypt passwords in your vmware.conf file for Salt, you can use the nacl module provided by Salt. This module allows you to encrypt sensitive data, such as passwords, and store them securely. Here’s how you can do it:
+1. Generate Encryption Keys
+First, generate a key pair using the nacl module:
+salt-call --local nacl.keygen sk_file=/etc/salt/pki/master/nacl sk_file=/etc/salt/pki/master/nacl.pub
+This will create a secret key (nacl) and a public key (nacl.pub) in the specified directory.
+2. Encrypt the Password
+Use the public key to encrypt your password:
+salt-call --local nacl.enc 'your_password' pk_file=/etc/salt/pki/master/nacl.pub
+This command will output the encrypted password.
+3. Store the Encrypted Password in vmware.conf
+Replace the plain text password in your vmware.conf file with the encrypted password:
+/etc/salt/cloud.providers.d/vmware.conf:
+my-vmware-config:
+  driver: vmware
+  user: 'DOMAIN\\user'
+  password: 'encrypted_password'
+  url: 'https://vcenter.domain.com'
+  protocol: 'https'
+  port: 443
+  certificate_path: '/path/to/client_certificate.pem'
+  private_key_path: '/path/to/private_key.pem'
+4. Decrypt the Password in Your Salt States or Pillars
+When you need to use the password, decrypt it using the nacl module:
+decrypt_password:
+  module.run:
+    - name: nacl.dec
+    - data: 'encrypted_password'
+    - sk_file: /etc/salt/pki/master/nacl
+Example Usage in a State File
+Here’s how you can use the decrypted password in a state file:
+create_vm:
+  salt.function:
+    - name: cloud.profile
+    - provider: my-vmware-config
+    - profile: vmware-centos7
+    - vm_name: new-vm-name
+    - password: {{ salt'nacl.dec' }}
+Additional Resources
+For more detailed instructions and advanced configurations, refer to the SaltStack documentation on the nacl module[1].
+If you have any specific questions or need further assistance, feel free to ask!
+References
+[1] salt.modules.nacl

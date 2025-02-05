@@ -1,0 +1,74 @@
+Rocky Linux, detailed walkthrough of configuring ansible for cisco network management
+Copilot said:
+Copilot
+Sure, I can help you with that! Here's a detailed walkthrough on how to configure Ansible on Rocky Linux for managing Cisco network devices:
+
+1. Install Ansible on Rocky Linux
+First, ensure your system is up-to-date and install Ansible:
+
+sudo dnf update -y
+sudo dnf install epel-release -y
+sudo dnf install ansible -y
+Verify the installation:
+
+ansible --version
+2. Set Up Ansible Inventory
+Create an inventory file to list your Cisco devices. This file is typically located at /etc/ansible/hosts:
+
+sudo nano /etc/ansible/hosts
+Add your Cisco devices to the inventory file:
+
+[cisco]
+192.168.1.1
+192.168.1.2
+3. Configure Ansible for Cisco Devices
+Ansible uses SSH to communicate with devices. Ensure SSH is enabled on your Cisco devices and that you have the necessary credentials.
+
+4. Create Ansible Playbooks
+Ansible playbooks are YAML files that define tasks to be executed on your devices. Here's an example playbook to gather facts from Cisco devices:
+
+---
+- name: Gather facts from Cisco devices
+  hosts: cisco
+  gather_facts: no
+  tasks:
+    - name: Gather facts
+      cisco.ios.ios_facts:
+        provider:
+          host: "{{ inventory_hostname }}"
+          username: "your_username"
+          password: "your_password"
+          authorize: yes
+          auth_pass: "your_enable_password"
+Save this playbook as gather_facts.yml.
+
+5. Run the Playbook
+Execute the playbook to gather facts from your Cisco devices:
+
+ansible-playbook gather_facts.yml
+6. Advanced Configuration
+For more advanced configurations, you can create playbooks to manage VLANs, interfaces, and other network settings. Here's an example to configure a VLAN:
+
+---
+- name: Configure VLAN on Cisco devices
+  hosts: cisco
+  gather_facts: no
+  tasks:
+    - name: Configure VLAN
+      cisco.ios.ios_vlan:
+        vlan_id: 10
+        name: "Management"
+        state: present
+        provider:
+          host: "{{ inventory_hostname }}"
+          username: "your_username"
+          password: "your_password"
+          authorize: yes
+          auth_pass: "your_enable_password"
+Save this playbook as configure_vlan.yml and run it with:
+
+ansible-playbook configure_vlan.yml
+Additional Resources
+For more detailed information, you can refer to the Rocky Linux documentation on Ansible1 and the Ansible documentation.
+
+Feel free to ask if you have any specific questions or need further assistance!

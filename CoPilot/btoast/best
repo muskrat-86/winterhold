@@ -1,0 +1,107 @@
+best burnttoast notification types
+Copilot said:
+Copilot
+BurntToast is a versatile PowerShell module for creating Windows toast notifications. Here are some of the best types of notifications you can create with it:
+
+Basic Notifications: Simple pop-ups with text messages. Ideal for quick alerts or reminders.
+
+New-BurntToastNotification -Text "Hello, this is a sample message."
+Custom Sound Notifications: Notifications with custom sound effects. Useful for distinguishing different types of alerts.
+
+New-BurntToastNotification -Text "Reminder!" -Sound "Alarm5"
+Actionable Notifications: Notifications with buttons for user interaction, such as dismissing or performing specific actions.
+
+$action = New-BTAction -Buttons (New-BTButton -Content "Dismiss" -Dismiss)
+New-BurntToastNotification -Text "Action Required" -Actions $action
+Snooze and Dismiss Notifications: Notifications that allow users to snooze or dismiss the alert, perfect for reminders.
+
+New-BurntToastNotification -Text "Meeting in 10 minutes" -SnoozeAndDismiss
+Input Notifications: Notifications that include input fields, such as text boxes or selection boxes, for gathering user input.
+
+$input = New-BTInput -Id "UserInput" -Type "TextBox" -PlaceholderText "Enter your response"
+$action = New-BTAction -Inputs $input -Buttons (New-BTButton -Content "Submit" -Arguments "SubmitButton")
+New-BurntToastNotification -Text "Please provide your input" -Actions $action
+These types of notifications can be customized further to fit your specific needs123. Do you have a particular use case in mind for these notifications?
+
+
+1
+Actionable Toast Notifications, Finally Cracked Them!
+
+2
+Generate Windows toast notifications with the PowerShell module BurntToast
+Show more
+
+Edit in Pages
+
+
+
+
+AI-generated content may be incorrect
+You said:
+
+powershell, add computer to ad group
+Copilot said:
+Copilot
+To add a computer to an Active Directory (AD) group using PowerShell, you can use the Add-ADGroupMember cmdlet. Here’s a basic example:
+
+Single Computer:
+
+Add-ADGroupMember -Identity "GroupName" -Members "ComputerName$"
+Replace "GroupName" with the name of your AD group and "ComputerName$" with the SAM account name of the computer (note the $ at the end).
+
+Multiple Computers from a CSV File: If you have a list of computers in a CSV file, you can add them all to a group with a script like this:
+
+$SecurityGroupName = "GroupName"
+$ComputerList = Import-Csv "C:\Path\To\ComputerList.csv"
+
+foreach ($Computer in $ComputerList) {
+    Add-ADGroupMember -Identity $SecurityGroupName -Members "$($Computer.Name)$"
+}
+Ensure your CSV file has a column named Name with the computer names.
+
+These scripts will help you efficiently manage AD group memberships12. If you need further customization or have specific requirements, feel free to ask!
+
+
+1
+Add Computer to Group using Add-ADGroupMember - ShellGeek
+
+2
+PowerTip: Add Computer to Security Group with PowerShell
+
+Edit in Pages
+
+
+
+
+AI-generated content may be incorrect
+December 3
+You said:
+
+add ssh banner, rocky linux
+Copilot said:
+Copilot
+To add an SSH banner on Rocky Linux, follow these steps:
+
+Create the Banner File: First, create a file that will contain your custom banner message. For example, you can create a file named /etc/ssh/ssh_banner:
+
+sudo nano /etc/ssh/ssh_banner
+Add your custom message to this file. For example:
+
+**************************************************
+* Unauthorized access is prohibited.             *
+* All activities are monitored and recorded.     *
+* Disconnect immediately if you are not authorized.*
+**************************************************
+Configure SSH to Use the Banner: Next, edit the SSH configuration file to specify the path to your banner file:
+
+sudo nano /etc/ssh/sshd_config
+Find the line that starts with #Banner and uncomment it by removing the # symbol. Then, set it to the path of your banner file:
+
+Banner /etc/ssh/ssh_banner
+Restart the SSH Service: To apply the changes, restart the SSH service:
+
+sudo systemctl restart sshd
+Verify the Banner: Finally, test your SSH connection to ensure the banner is displayed before the login prompt:
+
+ssh user@your_server_ip
+This will display your custom SSH banner message before the user logs in12. If you have any specific requirements or need further assistance, feel free to ask!

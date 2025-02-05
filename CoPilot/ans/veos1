@@ -1,0 +1,77 @@
+ansible, arista playbook
+Copilot said:
+Copilot
+Sure! Ansible can be used to automate the management of Arista EOS devices. Here are some useful resources and examples to get you started:
+
+Arista EOS Configuration with Ansible:
+
+The arista.eos.eos_config module allows you to manage Arista EOS configuration sections. This module can handle configurations using either CLI or eAPI transports. You can find detailed documentation and examples here1.
+Example Playbooks:
+
+The arista-netdevops-community repository on GitHub contains various Ansible playbooks for interacting with Arista EOS. These playbooks cover tasks such as enabling eAPI, managing VLANs, configuring login banners, and collecting device data2.
+Arista AVD (Architect, Validate, Deploy):
+
+Arista Networks provides a collection of Ansible roles and modules to help automate the management of devices running Arista's EOS. This includes support for both eAPI and CloudVision Portal (CVP). You can explore this collection on GitHub3.
+Would you like help with a specific playbook or task?
+
+
+1
+Manage Arista EOS configuration sections - Ansible Documentation
+
+2
+arista-netdevops-community/arista_eos_automation_with_ansible
+Show more
+
+Edit in Pages
+
+
+
+
+AI-generated content may be incorrect
+You said:
+
+detailed example of ansible playbook for arista eos
+Copilot said:
+Copilot
+Here's a detailed example of an Ansible playbook for managing Arista EOS devices. This playbook will enable eAPI on the device and configure a VLAN.
+
+Inventory File (inventory.ini)
+[arista]
+arista1 ansible_host=192.168.1.1 ansible_user=admin ansible_password=admin
+Playbook File (playbook.yml)
+---
+- name: Configure Arista EOS
+  hosts: arista
+  gather_facts: no
+  tasks:
+    - name: Enable eAPI
+      arista.eos.eos_config:
+        lines:
+          - management api http-commands
+          - no shutdown
+        provider:
+          host: "{{ ansible_host }}"
+          username: "{{ ansible_user }}"
+          password: "{{ ansible_password }}"
+
+    - name: Configure VLAN
+      arista.eos.eos_config:
+        lines:
+          - vlan 10
+          - name Test_VLAN
+        provider:
+          host: "{{ ansible_host }}"
+          username: "{{ ansible_user }}"
+          password: "{{ ansible_password }}"
+Explanation
+Inventory File: Defines the Arista device with its IP address and login credentials.
+Playbook File: Contains two tasks:
+Enable eAPI: Uses the arista.eos.eos_config module to enable eAPI on the device.
+Configure VLAN: Configures VLAN 10 with the name "Test_VLAN".
+Running the Playbook
+To run the playbook, use the following command:
+
+ansible-playbook -i inventory.ini playbook.yml
+For more detailed examples and advanced configurations, you can explore the arista-netdevops-community repository1 and the eos-ansible-tower-demo repository2.
+
+Would you like to dive into any specific configurations or tasks?

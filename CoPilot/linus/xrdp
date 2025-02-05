@@ -1,0 +1,200 @@
+Sure! Let's add remote access configuration using XRDP, a logging service to monitor users, and the necessary firewall rules to the Kickstart script.
+
+### Updated Kickstart Script with Remote Access, Logging, and Firewall Rules
+
+```bash
+# Kickstart configuration
+
+# %pre section
+%pre --interpreter=/usr/bin/python
+import os
+import base64
+import subprocess
+import string
+import random
+
+# Function to generate a random password
+def generate_random_password(length=12):
+    characters = string.ascii_letters + string.digits + string.punctuation
+    password = ''.join(random.choice(characters) for i in range(length))
+    return password
+
+# Function to generate a random salt
+def generate_random_salt(length=12):
+    salt = base64.b64encode(os.urandom(length)).decode('utf-8')
+    return salt
+
+# Function to identify the smallest NVMe or SATA drive
+def identify_smallest_drive():
+    drives = subprocess.run(['lsblk', '-d', '-o', 'NAME,SIZE,TYPE,ROTA'], capture_output=True, text=True).stdout.strip().split('\n')[1:]
+    nvme_drives = []
+    sata_drives = []
+
+    for drive in drives:
+        name, size, dtype, rota = drive.split()
+        size_gb = float(size.replace('G', ''))
+        if 'nvme' in name:
+            nvme_drives.append((name, size_gb))
+        elif dtype == 'disk' and rota == '1':
+            sata_drives.append((name, size_gb))
+
+    if nvme_drives:
+        smallest_nvme = min(nvme_drives, key=lambda x: x[1])
+        return smallest_nvme[0]
+    elif sata_drives:
+        smallest_sata = min(sata_drives, key=lambda x: x[1])
+        return smallest_sata[0]
+    else:
+        raise Exception("No suitable NVMe or SATA drives found")
+
+# Generate random password and salt for root user
+root_password = generate_random_password()
+root_salt = generate_random_salt()
+root_hashed_password = subprocess.run(['openssl', 'passwd', '-6', '-salt', root_salt, root_password], capture_output=True, text=True).stdout.strip()
+
+# Generate random password and salt for admin user
+admin_password = generate_random_password()
+admin_salt = generate_random_salt()
+admin_hashed_password = subprocess.run(['openssl', 'passwd', '-6', '-salt', admin_salt, admin_password], capture_output=True, text=True).stdout.strip()
+
+# Identify the smallest NVMe or SATA drive
+install_drive = identify_smallest_drive()
+
+# Print the generated passwords (for one-time display)
+print(f"Generated root password: {root_password}")
+print(f"Generated admin password: {admin_password}")
+print(f"Installation drive: {install_drive}")
+
+# Save passwords and install drive to a file for later use
+with open('/tmp/passwords_and_drive.txt', 'w') as file:
+    file.write(f"root_password={root_password}\n")
+    file.write(f"admin_password={admin_password}\n")
+    file.write(f"install_drive={install_drive}\n")
+%end
+
+# %post section
+%post --interpreter=/usr/bin/python
+import subprocess
+
+# Read passwords and install drive from the file
+with open('/tmp/passwords_and_drive.txt', 'r') as file:
+    lines = file.readlines()
+    root_password = lines[0].split('=')[1].strip()
+    admin_password = lines[1].split('=')[1].strip()
+    install_drive = lines[2].split('=')[1].strip()
+
+# Set the root password (hashed)
+subprocess.run(['echo', f'root:{root_hashed_password}', '|', 'chpasswd', '--encrypted'])
+
+# Add a super user called admin and set the password (hashed)
+subprocess.run(['useradd', 'admin'])
+subprocess.run(['echo', f'admin:{admin_hashed_password}', '|', 'chpasswd', '--encrypted'])
+subprocess.run(['usermod', '-aG', 'wheel', 'admin'])
+
+# Install required packages
+subprocess.run(['yum', 'install', '-y', 'ipa-client', 'realmd', 'sssd', 'oddjob', 'oddjob-mkhomedir', 'adcli', 'samba-common-tools', 'krb5-workstation', 'authselect-compat', 'openssl', 'xrdp', 'rsyslog'])
+
+# Enable and start XRDP service
+subprocess.run(['systemctl', 'enable', 'xrdp'])
+subprocess.run(['systemctl', 'start', 'xrdp'])
+
+# Configure firewall rules for XRDP
+subprocess.run(['firewall-cmd', '--permanent', '--add-port=3389/tcp'])
+subprocess.run(['firewall-cmd', '--reload'])
+
+# Enable and start rsyslog service for logging
+subprocess.run(['systemctl', 'enable', 'rsyslog'])
+subprocess.run(['systemctl', 'start', 'rsyslog'])
+
+# Configure rsyslog to monitor user activity
+with open('/etc/rsyslog.d/user_activity.conf', 'w') as rsyslog_conf:
+    rsyslog_conf.write("""
+if $programname == 'sshd' then /var/log/sshd.log
+& stop
+if $programname == 'xrdp-sesman' then /var/log/xrdp-sesman.log
+& stop
+""")
+subprocess.run(['systemctl', 'restart', 'rsyslog'])
+
+# Discover the FreeIPA domain
+subprocess.run(['realm', 'discover', 'ipa.example.com'])
+
+# Join the FreeIPA domain without a password
+subprocess.run(['ipa-client-install', '--hostname=$(hostname -f)', '--mkhomedir', '--ssh-trust-dns', '--no-ntp', '--principal=admin', '--password=' + admin_password, '--force-join'])
+
+# Enable and start SSSD service
+subprocess.run(['systemctl', 'enable', 'sssd'])
+subprocess.run(['systemctl', 'start', 'sssd'])
+
+# Configure SSSD
+subprocess.run(['authselect', 'select', 'sssd', 'with-mkhomedir', '--force'])
+
+# Create a self-signed certificate with FreeIPA CA
+subprocess.run(['ipa-getcert', 'request', '-f', '/etc/pki/tls/certs/ipa_cert.pem', '-k', '/etc/pki/tls/private/ipa_key.pem', '-N', 'CN=hostname.example.com', '-K', 'host/hostname.example.com'])
+
+# Replace yum repos with local repos
+with open('/etc/yum.repos.d/local.repo', 'w') as repo_file:
+    repo_file.write("""[local]
+name=Local Repository
+baseurl=file:///mnt/localrepo
+enabled=1
+gpgcheck=0
+""")
+
+# Mount the local repository
+subprocess.run(['mkdir', '-p', '/mnt/localrepo'])
+subprocess.run(['mount', '-o', 'loop', '/path/to/localrepo.iso', '/mnt/localrepo'])
+
+# Create SSH keys
+subprocess.run(['ssh-keygen', '-t', 'rsa', '-b', '4096', '-f', '/root/.ssh/id_rsa', '-N', ''])
+
+# Use certificates to mount and connect with Synology file share
+subprocess.run(['mkdir', '-p', '/mnt/synology'])
+subprocess.run(['mount', '-t', 'cifs', '//synology.example.com/share', '/mnt/synology', '-o', 'username=admin,password=' + admin_password, 'vers=3.0', 'sec=ntlmssp', 'cruid=admin', 'domain=example.com', 'iocharset=utf8', 'sec=krb5', 'cruid=admin', 'credentials=/etc/samba/credentials'])
+
+# Create credentials file for Synology
+with open('/etc/samba/credentials', 'w') as cred_file:
+    cred_file.write(f"""username=admin
+password={admin_password}
+domain=example.com
+""")
+subprocess.run(['chmod', '600', '/etc/samba/credentials'])
+
+%end
+
+# %firstboot section
+%firstboot --interpreter=/usr/bin/python
+import subprocess
+
+# Read passwords from the file
+with open('/tmp/passwords_and_drive.txt', 'r') as file:
+    lines = file.readlines()
+    root_password = lines[0].split('=')[1].strip()
+    admin_password = lines[1].split('=')[1].strip()
+
+# Print the generated passwords (for one-time display)
+print(f"Generated root password: {root_password}")
+print(f"Generated admin password: {admin_password}")
+
+# Clean up the passwords file
+subprocess.run(['rm', '-f', '/tmp/passwords_and_drive.txt'])
+
+%end
+
+# Disk partitioning
+part /boot --fstype=xfs --size=1024
+part pv.01 --size=1 --grow
+volgroup vg_root pv.01
+logvol / --fstype=xfs --name=lv_root --vgname=vg_root --size=10240 --grow
+logvol swap --name=lv_swap --vgname=vg_root --size=2048 --grow --maxsize=4096
+```
+
+### Explanation
+1. **%pre Section:**
+   - Generates random passwords and salts for the root and admin users.
+   - Identifies the smallest NVMe or SATA drive, prioritizing NVMe drives.
+   - Prints the generated passwords and installation drive for one-time display.
+   - Saves the passwords and installation drive to a temporary file for later use.
+
+2. **%post Section:**
+   - Reads the passwords and installation drive from the temporary file.

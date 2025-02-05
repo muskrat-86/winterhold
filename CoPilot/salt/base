@@ -1,0 +1,374 @@
+Sure! Here are example Salt and Ansible scripts for configuring your base image. These scripts will help automate the configuration and management of your systems.
+
+### SaltStack Script
+
+#### Top File (`/srv/salt/top.sls`)
+```yaml
+base:
+  '*':
+    - base-image
+```
+
+#### State File (`/srv/salt/base-image.sls`)
+```yaml
+# Install necessary packages
+install_packages:
+  pkg.installed:
+    - pkgs:
+      - ipa-client
+      - realmd
+      - sssd
+      - oddjob
+      - oddjob-mkhomedir
+      - adcli
+      - samba-common-tools
+      - krb5-workstation
+      - authselect-compat
+      - openssl
+      - xrdp
+      - rsyslog
+
+# Enable and start services
+enable_services:
+  service.running:
+    - name: xrdp
+    - enable: True
+  service.running:
+    - name: rsyslog
+    - enable: True
+  service.running:
+    - name: sssd
+    - enable: True
+
+# Configure firewall rules
+firewall_rules:
+  cmd.run:
+    - name: |
+        firewall-cmd --permanent --add-port=3389/tcp
+        firewall-cmd --reload
+
+# Configure rsyslog for user activity logging
+configure_rsyslog:
+  file.managed:
+    - name: /etc/rsyslog.d/user_activity.conf
+    - source: salt://base-image/user_activity.conf
+    - user: root
+    - group: root
+    - mode: 644
+  service.running:
+    - name: rsyslog
+    - enable: True
+    - watch:
+      - file: configure_rsyslog
+```
+
+#### Rsyslog Configuration (`/srv/salt/base-image/user_activity.conf`)
+```yaml
+if $programname == 'sshd' then /var/log/sshd.log
+& stop
+if $programname == 'xrdp-sesman' then /var/log/xrdp-sesman.log
+& stop
+```
+
+### Ansible Playbook
+
+#### Playbook File (`base-image.yml`)
+```yaml
+---
+- name: Configure Base Image
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Install necessary packages
+      yum:
+        name:
+          - ipa-client
+          - realmd
+          - sssd
+          - oddjob
+          - oddjob-mkhomedir
+          - adcli
+          - samba-common-tools
+          - krb5-workstation
+          - authselect-compat
+          - openssl
+          - xrdp
+          - rsyslog
+        state: present
+
+    - name: Enable and start XRDP service
+      systemd:
+        name: xrdp
+        enabled: yes
+        state: started
+
+    - name: Enable and start rsyslog service
+      systemd:
+        name: rsyslog
+        enabled: yes
+        state: started
+
+    - name: Enable and start SSSD service
+      systemd:
+        name: sssd
+        enabled: yes
+        state: started
+
+    - name: Configure firewall rules for XRDP
+      firewalld:
+        port: 3389/tcp
+        permanent: yes
+        state: enabled
+      notify: Reload firewalld
+
+    - name: Configure rsyslog for user activity logging
+      copy:
+        dest: /etc/rsyslog.d/user_activity.conf
+        content: |
+          if $programname == 'sshd' then /var/log/sshd.log
+          & stop
+          if $programname == 'xrdp-sesman' then /var/log/xrdp-sesman.log
+          & stop
+      notify: Restart rsyslog
+
+  handlers:
+    - name: Reload firewalld
+      systemd:
+        name: firewalld
+        state: reloaded
+
+    - name: Restart rsyslog
+      systemd:
+        name: rsyslog
+        state: restarted
+```
+
+### Explanation
+1. **SaltStack Script:**
+   - **Top File:** Defines which states to apply to which minions.
+   - **State File:** Installs necessary packages, enables and starts services, configures firewall rules, and sets up rsyslog for user activity logging.
+   - **Rsyslog Configuration:** Specifies logging rules for SSH and XRDP sessions.
+
+2. **Ansible Playbook:**
+   - **Playbook File:** Installs necessary packages, enables and starts services, configures firewall rules, and sets up rsyslog for user activity logging.
+   - **Handlers:** Reloads firewalld and restarts rsyslog when their configurations change.
+
+These scripts will help automate the configuration of your base image, ensuring consistency and compliance with your requirements.
+
+Would you like any further customization or additional details on any of these steps?
+
+
+
+Sure! Here are Python scripts to automate the creation of SaltStack configuration files and Ansible playbooks based on your provisioned base image.
+
+### Python Script to Create SaltStack Config Files
+
+```python
+import os
+
+# Function to create SaltStack config files
+def create_saltstack_config(base_dir):
+    top_file_content = """
+base:
+  '*':
+    - base-image
+"""
+    state_file_content = """
+# Install necessary packages
+install_packages:
+  pkg.installed:
+    - pkgs:
+      - ipa-client
+      - realmd
+      - sssd
+      - oddjob
+      - oddjob-mkhomedir
+      - adcli
+      - samba-common-tools
+      - krb5-workstation
+      - authselect-compat
+      - openssl
+      - xrdp
+      - rsyslog
+
+# Enable and start services
+enable_services:
+  service.running:
+    - name: xrdp
+    - enable: True
+  service.running:
+    - name: rsyslog
+    - enable: True
+  service.running:
+    - name: sssd
+    - enable: True
+
+# Configure firewall rules
+firewall_rules:
+  cmd.run:
+    - name: |
+        firewall-cmd --permanent --add-port=3389/tcp
+        firewall-cmd --reload
+
+# Configure rsyslog for user activity logging
+configure_rsyslog:
+  file.managed:
+    - name: /etc/rsyslog.d/user_activity.conf
+    - source: salt://base-image/user_activity.conf
+    - user: root
+    - group: root
+    - mode: 644
+  service.running:
+    - name: rsyslog
+    - enable: True
+    - watch:
+      - file: configure_rsyslog
+"""
+    rsyslog_conf_content = """
+if $programname == 'sshd' then /var/log/sshd.log
+& stop
+if $programname == 'xrdp-sesman' then /var/log/xrdp-sesman.log
+& stop
+"""
+
+    # Create directories if they don't exist
+    os.makedirs(os.path.join(base_dir, 'srv/salt'), exist_ok=True)
+    
+    # Write top.sls file
+    with open(os.path.join(base_dir, 'srv/salt/top.sls'), 'w') as top_file:
+        top_file.write(top_file_content)
+    
+    # Write base-image.sls file
+    with open(os.path.join(base_dir, 'srv/salt/base-image.sls'), 'w') as state_file:
+        state_file.write(state_file_content)
+    
+    # Write user_activity.conf file for rsyslog configuration
+    os.makedirs(os.path.join(base_dir, 'srv/salt/base-image'), exist_ok=True)
+    with open(os.path.join(base_dir, 'srv/salt/base-image/user_activity.conf'), 'w') as rsyslog_conf_file:
+        rsyslog_conf_file.write(rsyslog_conf_content)
+
+# Define base directory for the project files 
+base_dir = '/path/to/project'
+
+# Create SaltStack config files 
+create_saltstack_config(base_dir)
+
+print(f"SaltStack config files created in {base_dir}")
+```
+
+### Python Script to Create Ansible Playbook
+
+```python
+import os
+
+# Function to create Ansible playbook files
+def create_ansible_playbook(base_dir):
+    playbook_content = """
+---
+- name: Configure Base Image
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Install necessary packages
+      yum:
+        name:
+          - ipa-client
+          - realmd
+          - sssd
+          - oddjob
+          - oddjob-mkhomedir
+          - adcli
+          - samba-common-tools
+          - krb5-workstation
+          - authselect-compat
+          - openssl
+          - xrdp
+          - rsyslog
+        state: present
+
+    - name: Enable and start XRDP service
+      systemd:
+        name: xrdp
+        enabled: yes
+        state: started
+
+    - name: Enable and start rsyslog service
+      systemd:
+        name: rsyslog
+        enabled: yes
+        state: started
+
+    - name: Enable and start SSSD service
+      systemd:
+        name: sssd
+        enabled: yes
+        state: started
+
+    - name: Configure firewall rules for XRDP
+      firewalld:
+        port: 3389/tcp
+        permanent: yes
+        state: enabled
+      notify: Reload firewalld
+
+    - name: Configure rsyslog for user activity logging
+      copy:
+        dest: /etc/rsyslog.d/user_activity.conf
+        content: |
+          if $programname == 'sshd' then /var/log/sshd.log
+          & stop
+          if $programname == 'xrdp-sesman' then /var/log/xrdp-sesman.log
+          & stop
+      notify: Restart rsyslog
+
+  handlers:
+    - name: Reload firewalld
+      systemd:
+        name: firewalld
+        state: reloaded
+
+    - name: Restart rsyslog
+      systemd:
+        name: rsyslog
+        state: restarted
+"""
+
+    # Create directories if they don't exist and write playbook file 
+    os.makedirs(os.path.join(base_dir, 'ansible'), exist_ok=True)
+    
+    with open(os.path.join(base_dir, 'ansible/base-image.yml'), 'w') as playbook_file:
+        playbook_file.write(playbook_content)
+
+# Define base directory for the project files 
+base_dir = '/path/to/project'
+
+# Create Ansible playbook files 
+create_ansible_playbook(base_dir)
+
+print(f"Ansible playbook created in {base_dir}")
+```
+
+### Explanation
+1. **SaltStack Script:**
+   - **create_saltstack_config:** This function creates the necessary SaltStack configuration files, including `top.sls`, `base-image.sls`, and `user_activity.conf`.
+   - **base_dir:** Define the base directory where the project files will be created.
+
+2. **Ansible Script:**
+   - **create_ansible_playbook:** This function creates the Ansible playbook file `base-image.yml`.
+   - **base_dir:** Define the base directory where the project files will be created.
+
+### Usage
+1. **Set the base directory:** Update the `base_dir` variable in both scripts with the actual path where you want to create the project files.
+2. **Run the scripts:** Execute the scripts to create the SaltStack configuration files and Ansible playbook.
+
+```bash
+python create_saltstack_config.py
+python create_ansible_playbook.py
+```
+
+These scripts will automate the creation of SaltStack configuration files and Ansible playbooks based on your provisioned base image.
+
+Would you like any further customization or additional details on any of these steps?
+

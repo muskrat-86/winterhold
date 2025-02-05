@@ -1,0 +1,85 @@
+Detailed burnt toast notication that gives acknowledgement butoon
+Copilot said:
+Copilot
+It sounds like you're looking to create a detailed notification for a "burnt toast" scenario that includes an acknowledgment button. Here's a sample of how you might structure it:
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burnt Toast Notification</title>
+    <style>
+        .toast {
+            visibility: hidden;
+            max-width: 50%;
+            margin: 0 auto;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            bottom: 30px;
+            font-size: 17px;
+            transform: translateX(-50%);
+        }
+        .toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+        @keyframes fadein {
+            from {bottom: 0; opacity: 0;} 
+            to {bottom: 30px; opacity: 1;}
+        }
+        @keyframes fadeout {
+            from {bottom: 30px; opacity: 1;} 
+            to {bottom: 0; opacity: 0;}
+        }
+        .ack-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .ack-button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+<div id="toast" class="toast">
+    <p>Oops! Your toast is burnt. Please check the toaster.</p>
+    <button class="ack-button" onclick="acknowledgeToast()">Acknowledge</button>
+</div>
+
+<script>
+    function showToast() {
+        var toast = document.getElementById("toast");
+        toast.className = "toast show";
+        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+
+    function acknowledgeToast() {
+        var toast = document.getElementById("toast");
+        toast.className = toast.className.replace("show", "");
+        alert("You have acknowledged the burnt toast notification.");
+    }
+
+    // Example of triggering the toast notification
+    window.onload = function() {
+        showToast();
+    };
+</script>
+
+</body>
+</html>
+This code creates a notification that appears at the bottom of the screen, informing the user that their toast is burnt. It includes an acknowledgment button that, when clicked, hides the notification and shows an alert confirming the acknowledgment.
+
+Would you like any modifications or additional features?
