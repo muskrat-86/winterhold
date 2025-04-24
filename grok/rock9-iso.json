@@ -1,0 +1,19 @@
+source "vmware-iso" "example" {
+  iso_url          = "http://mirror.example.com/centos/8-stream/isos/x86_64/CentOS-Stream-8-x86_64-latest-dvd1.iso"
+  iso_checksum     = "sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  boot_command     = ["<tab> linux inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ks.cfg<enter>"]
+  http_directory   = "http"
+  vm_name          = "centos8-template"
+  guest_os_type    = "centos-64"
+  disk_size        = 20000
+  memory           = 2048
+  cpus             = 2
+  ssh_username     = "root"
+  ssh_password     = "password"
+  ssh_timeout      = "30m"
+  shutdown_command  = "shutdown -P now"
+}
+
+build {
+  sources = ["source.vmware-iso.example"]
+}
