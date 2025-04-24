@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+import argparse
+import subprocess
+import shutil
+import os
+from smbprotocol.connection import Connection
+from smbprotocol.session import Session
+from smbprotocol.tree import Tree
+from smbprotocol.open import Open, FilePipePrinterOpen
+
+def run_packer(packer_file):
+    """Run Packer build command to create the ISO."""
+    try:
+        result = subprocess.run(
+            ["packer", "build", packer_file],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        print(f"Packer build successful: {result.stdout}")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Packer build failed: {e.stderr}")
+        return False
+    except FileNotFoundError:
+        print("Packer not found. Ensure Packer is installed and in PATH.")
+        return False
+
+def copy_to_local(iso_path, dest_path):
+    """Copy ISO to local storage."""
+    try:
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        shutil.copy2(iso_path, dest_path)
+        print(f"ISO copied to local storage: {dest_path}")
+        return True
+    except Exception as e:
+        print(f"Failed to copy ISO to local storage: {e}")
+        return False
+
+def copy_to_smb(iso_path, smb_server, share_name, smb_path, username, password):
+    """Copy ISO to SMB share."""
+    try:
+        # Establish SMB connection
+        connection = Connection(smb_server, 445)
+        connection.connect()
+        session = Session(connection, username, password)
+        session.connect()
+        tree = Tree(session, share_name)
+        tree.connect()
+
+        # Open destination file on SMB share
+        dest_file = Open(tree, smb_path, mode="wb")
+        dest_file.create()
+
+        # Read ISO and write to SMB
+        with open(iso_path, "rb") as src_file:
+            dest_file.write(src_file.read())
+        
+        dest_file.close()
+        print(f"ISO copied to SMB share: \\\\{smb_server}\\{share_name}\\{smb_path}")
+        return True
+    except Exception as e:
+        print(f"Failed to copy ISO to SMB share: {e}")
+        return False
+    finally:
+        # Clean up SMB connection
+        if 'dest_file' in locals():
+            dest_file.close()
+        if 'tree' in locals():
+            tree.disconnect()
+        if 'session' in locals():
+            session.disconnect()
+        if 'connection' in locals():
+            connection.disconnect()
+
+def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Run Packer and store ISO in specified location.")
+    parser.add_argument("--packer-file", required=True, help="Path to Packer configuration file")
+    parser.add_argument("--storage-type", required=True, choices=["local", "smb"], help="Storage type for ISO")
+    parser.add_argument("--local-dest", help="Local destination path for ISO (required for local storage)")
+    parser.add_argument("--smb-server", help="SMB server address (required for SMB storage)")
+    parser.add_argument("--smb-share", help="SMB share name (required for SMB storage)")
+    parser.add_argument("--smb-path", help="Path on SMB share for ISO (required for SMB storage)")
+    parser.add_argument("--smb-username", help="SMB username (required for SMB storage)")
+    parser.add_argument("--smb-password", help="SMB password (required for SMB storage)")
+    args = parser.parse_args()
+
+    # Validate arguments based on storage type
+    if args.storage_type == "local" and not args.local_dest:
+        parser.error("--local-dest is required for local storage")
+    elif args.storage_type == "smb" and not all([args.smb_server, args.smb_share, args.smb_path, args.smb_username, args.smb_password]):
+        parser.error("--smb-server, --smb-share, --smb-path, --smb-username, and --smb-password are required for SMB storage")
+
+    # Run Packer to create ISO
+    if not run_packer(args.packer_file):
+        return
+
+    # Assume ISO is generated in a known output directory (update as needed)
+    iso_path = "output-vmware-iso/packer-vmware.iso"  # Adjust based on Packer output
+
+    # Copy ISO to specified storage
+    if args.storage_type == "local":
+        copy_to_local(iso_path, args.local_dest)
+    elif args.storage_type == "smb":
+        copy_to_smb(
+            iso_path,
+            args.smb_server,
+            args.smb_share,
+            args.smb_path,
+            args.smb_username,
+            args.smb_password
+        )
+
+if __name__ == "__main__":
+    main()
