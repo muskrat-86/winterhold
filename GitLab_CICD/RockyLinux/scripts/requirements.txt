@@ -1,0 +1,4 @@
+ansible
+pyvmomi
+json
+pyyaml

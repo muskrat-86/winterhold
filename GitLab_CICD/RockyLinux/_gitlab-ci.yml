@@ -1,0 +1,76 @@
+# =============================================================================
+# GitLab CI/CD Pipeline for Rocky Linux Image Automation
+#
+# This pipeline performs the following:
+# 1. Builds a custom Rocky Linux ISO using Packer and a Kickstart script.
+# 2. Uploads the ISO to an on-prem VMware vSphere environment.
+# 3. Runs Ansible for post-install configuration.
+# 4. Cleans up the environment and collects error logs.
+#
+# Technologies used:
+# - Python (for scripting and orchestration)
+# - HashiCorp Packer (for ISO creation and vSphere upload)
+# - Ansible (for post-install configuration)
+#
+# Author: [Your Name or Team]
+# =============================================================================
+
+stages:
+  - build-custom-iso
+  - build
+  - upload
+  - configure
+  - cleanup
+
+variables:
+  PACKER_LOG: 1
+  PYTHONUNBUFFERED: 1
+  VENV_PATH: ".venv"
+
+before_script:
+  - python3 -m venv $VENV_PATH
+  - source $VENV_PATH/bin/activate
+  - pip install --upgrade pip
+  - pip install -r requirements.txt
+
+build-custom-iso:
+  stage: build-custom-iso
+  image: alpine:latest
+  script:
+    - apk add --no-cache wget bash xorriso
+    - chmod +x build_custom_iso.sh
+    - ./build_custom_iso.sh
+  artifacts:
+    paths:
+      - Rocky-9.3-x86_64-custom.iso
+
+build_iso:
+  stage: build
+  image: python:3.10
+  script:
+    - python scripts/setup_venv.py
+    - python scripts/generate_iso.py
+    - packer build packer/build_iso.json
+  artifacts:
+    paths:
+      - output/
+
+upload_vsphere:
+  stage: upload
+  image: python:3.10
+  script:
+    - python scripts/validate_vsphere_upload.py
+    - packer build packer/upload_vsphere.json
+
+post_install_config:
+  stage: configure
+  image: python:3.10
+  script:
+    - ansible-playbook -i ansible/inventory ansible/post_install.yml
+
+cleanup:
+  stage: cleanup
+  image: python:3.10
+  script:
+    - python scripts/cleanup.py
+  when: always

@@ -1,0 +1,35 @@
+{
+  "builders": [
+    {
+      "type": "iso",
+      "iso_url": "{{user `iso_url`}}",
+      "iso_checksum": "sha256:your-checksum-here",
+      "boot_command": [
+        "<esc><wait>",
+        "linux inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ks.cfg inst.stage2=hd:LABEL=RockyLinux <enter>"
+      ],
+      "http_directory": "http",
+      "headless": true,
+      "shutdown_command": "echo 'packer' | sudo -S shutdown -P now",
+      "disk_size": 20480,
+      "cpus": 2,
+      "memory": 4096,
+      "communicator": "ssh",
+      "ssh_username": "root",
+      "ssh_password": "password",
+      "ssh_timeout": "20m",
+      "output_directory": "output/rocky-linux-iso"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "yum install -y epel-release",
+        "yum install -y vim git curl",
+        "systemctl enable sshd",
+        "echo 'Provisioning complete!'"
+      ]
+    }
+  ]
+}

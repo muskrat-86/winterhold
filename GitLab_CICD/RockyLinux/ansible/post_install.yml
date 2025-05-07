@@ -1,0 +1,10 @@
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install basic packages
+      yum:
+        name:
+          - vim
+          - git
+          - curl
+        state: present

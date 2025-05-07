@@ -1,0 +1,6 @@
+
+mkisofs -o Rocky-9.3-x86_64-custom.iso \
+  -b isolinux/isolinux.bin \
+  -c isolinux/boot.cat \
+  -no-emul-boot -boot-load-size 4 -boot-info-table \
+  -J -R -V "Custom_Rocky_Linux" custom_iso

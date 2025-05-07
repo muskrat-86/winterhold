@@ -1,0 +1,72 @@
+# =============================================================================
+# GitLab CI/CD Pipeline for Rocky Linux Image Automation
+#
+# This pipeline performs the following:
+# 1. Builds a custom Rocky Linux ISO using Packer and a Kickstart script.
+# 2. Uploads the ISO to an on-prem VMware vSphere environment.
+# 3. Runs Ansible for post-install configuration.
+# 4. Cleans up the environment and collects error logs.
+#
+# Technologies used:
+# - Python (for scripting and orchestration)
+# - HashiCorp Packer (for ISO creation and vSphere upload)
+# - Ansible (for post-install configuration)
+#
+# Author: [Your Name or Team]
+# =============================================================================
+
+
+# Define the stages of the pipeline
+stages:
+  - build
+  - upload
+  - configure
+  - cleanup
+
+# Set environment variables used across all jobs
+variables:
+  PACKER_LOG: 1                  # Enable verbose logging for Packer
+  PYTHONUNBUFFERED: 1           # Ensure real-time Python output
+  VENV_PATH: ".venv"            # Path to the Python virtual environment
+
+# Commands to run before each job
+before_script:
+  - python3 -m venv $VENV_PATH                      # Create virtual environment
+  - source $VENV_PATH/bin/activate                  # Activate virtual environment
+  - pip install --upgrade pip                       # Upgrade pip
+  - pip install -r requirements.txt                 # Install dependencies
+
+# Build stage: generate ISO using Packer
+build_iso:
+  stage: build
+  image: python:3.10                                # Use Python image with venv support
+  script:
+    - python scripts/setup_venv.py                  # Set up virtual environment (optional redundancy)
+    - python scripts/generate_iso.py                # Generate or modify Packer ISO template
+    - packer build packer/build_iso.json            # Build the custom ISO
+  artifacts:
+    paths:
+      - output/                                     # Save output for use in later stages
+
+# Upload stage: upload ISO to vSphere
+upload_vsphere:
+  stage: upload
+  image: python:3.10
+  script:
+    - python scripts/validate_vsphere_upload.py     # Validate vSphere upload configuration
+    - packer build packer/upload_vsphere.json       # Upload ISO to vSphere
+
+# Configure stage: run Ansible post-installation tasks
+post_install_config:
+  stage: configure
+  image: python:3.10
+  script:
+    - ansible-playbook -i ansible/inventory ansible/post_install.yml  # Run Ansible playbook
+
+# Cleanup stage: collect logs and clean up workspace
+cleanup:
+  stage: cleanup
+  image: python:3.10
+  script:
+    - python scripts/cleanup.py                     # Collect error logs and delete generated files
+  when: always                                       # Run this stage regardless of pipeline success/failure

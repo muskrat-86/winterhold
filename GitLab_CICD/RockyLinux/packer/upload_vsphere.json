@@ -1,0 +1,15 @@
+{
+    "builders": [{
+      "type": "vsphere-iso",
+      "vcenter_server": "vcenter.local",
+      "username": "admin",
+      "password": "password",
+      "datacenter": "dc1",
+      "cluster": "cluster1",
+      "datastore": "datastore1",
+      "iso_paths": ["[datastore1] iso/RockyLinux.iso"],
+      "vm_name": "rocky-linux-base",
+      "guest_os_type": "centos9_64Guest"
+    }]
+  }
+  
