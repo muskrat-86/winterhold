@@ -1,0 +1,37 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  ISO_URL: "http://yourserver/path/to/iso"
+  KICKSTART_URL: "http://yourserver/path/to/kickstart.cfg"
+  VM_NAME: "custom-vm"
+  ARTIFACTORY_URL: "http://yourartifactory/path/to/repo"
+  ARTIFACTORY_USER: "your-username"
+  ARTIFACTORY_PASSWORD: "your-password"
+
+build_iso:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - apk add --no-cache mkisofs
+    - wget $ISO_URL -O minimal.iso
+    - mkdir -p /mnt/iso
+    - mount -o loop minimal.iso /mnt/iso
+    - mkdir -p custom_iso
+    - cp -r /mnt/iso/* custom_iso/
+    - cp kickstart.cfg custom_iso/
+    - mkisofs -o custom.iso -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -J -R -V "Custom ISO" custom_iso/
+    - umount /mnt/iso
+    - docker build -t custom-iso .
+    - docker save custom-iso | gzip > custom-iso.tar.gz
+    - curl -u $ARTIFACTORY_USER:$ARTIFACTORY_PASSWORD -T custom-iso.tar.gz $ARTIFACTORY_URL/custom-iso.tar.gz
+
+deploy_vm:
+  stage: deploy
+  image: python:3.8
+  script:
+    - pip install pyvmomi
+    - python create_vm.py

@@ -1,0 +1,33 @@
+{
+    "builders": [
+      {
+        "type": "vmware-iso",
+        "iso_url": "{{user `iso_url`}}",
+        "iso_checksum": "sha256:your-checksum",
+        "iso_checksum_type": "sha256",
+        "ssh_username": "root",
+        "ssh_password": "your-password",
+        "ssh_wait_timeout": "20m",
+        "vm_name": "{{user `vm_name`}}",
+        "disk_size": 20480,
+        "guest_os_type": "centos7-64",
+        "http_directory": "http",
+        "boot_command": [
+          "<esc><wait>",
+          "linux ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/kickstart.cfg<enter>"
+        ],
+        "shutdown_command": "echo 'packer' | sudo -S shutdown -P now"
+      }
+    ],
+    "provisioners": [
+      {
+        "type": "shell",
+        "inline": [
+          "yum -y update",
+          "yum -y install httpd",
+          "systemctl enable httpd"
+        ]
+      }
+    ]
+  }
+  
