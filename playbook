@@ -1,0 +1,37 @@
+hosts: all
+tasks:
+- hostname: Router1
+  name: Set hostname
+- commands:
+  - ip address 192.168.1.1 255.255.255.0
+  - no shutdown
+  interface: GigabitEthernet0/0
+  name: Configure interface GigabitEthernet0/0
+- commands:
+  - ip address 192.168.2.1 255.255.255.0
+  - no shutdown
+  interface: GigabitEthernet0/1
+  name: Configure interface GigabitEthernet0/1
+- commands:
+  - name Users
+  name: Configure VLAN 10
+  vlan_id: '10'
+- commands:
+  - name Guests
+  name: Configure VLAN 20
+  vlan_id: '20'
+- commands:
+  - router ospf 1
+  - network 192.168.0.0 0.0.255.255 area 0
+  name: Configure router
+- commands:
+  - snmp-server community public RO
+  name: Configure SNMP
+- commands:
+  - aaa new-model
+  name: Configure AAA
+- commands:
+  - address-family ipv4
+  - exit-address-family
+  name: Configure VRF Mgmt-vrf
+  vrf_name: Mgmt-vrf
