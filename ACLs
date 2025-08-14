@@ -1,0 +1,72 @@
+# Interface Configuration
+interface GigabitEthernet0/0
+ nameif outside
+ security-level 0
+ ip address 203.0.113.1 255.255.255.0
+
+interface GigabitEthernet0/1
+ nameif dmz
+ security-level 50
+ ip address 192.168.1.1 255.255.255.0
+
+interface GigabitEthernet0/2
+ nameif inside
+ security-level 100
+ ip address 10.0.0.1 255.255.255.0
+
+# NAT Configuration
+object network obj-inside
+ subnet 10.0.0.0 255.255.255.0
+ nat (inside,outside) dynamic interface
+
+object network obj-dmz
+ subnet 192.168.1.0 255.255.255.0
+ nat (dmz,outside) dynamic interface
+
+# Static NAT for Port Forwarding
+object network SSH-Server
+ host 192.168.1.10
+ nat (dmz,outside) static interface service tcp 22 22
+
+object network RDP-Server
+ host 192.168.1.20
+ nat (dmz,outside) static interface service tcp 3389 3389
+
+# ACLs
+access-list OUTSIDE_IN extended permit tcp any interface outside eq 22
+access-list OUTSIDE_IN extended permit tcp any interface outside eq 3389
+
+access-list DMZ_OUT extended permit icmp any any
+access-list INSIDE_OUT extended permit icmp any any
+
+access-list DMZ_OUT extended permit udp any any eq 53
+access-list DMZ_OUT extended permit tcp any any eq 22
+access-list DMZ_OUT extended permit tcp any any eq 3389
+access-list DMZ_OUT extended permit tcp any any eq 80
+access-list DMZ_OUT extended permit tcp any any eq 443
+access-list DMZ_OUT extended permit udp any any eq 123
+
+access-list INSIDE_OUT extended permit udp any any eq 53
+access-list INSIDE_OUT extended permit tcp any any eq 22
+access-list INSIDE_OUT extended permit tcp any any eq 3389
+access-list INSIDE_OUT extended permit tcp any any eq 80
+access-list INSIDE_OUT extended permit tcp any any eq 443
+access-list INSIDE_OUT extended permit udp any any eq 123
+
+access-list DMZ_TO_INSIDE extended permit tcp 192.168.1.0 255.255.255.0 10.0.0.0 255.255.255.0 eq 22
+access-list DMZ_TO_INSIDE extended permit udp 192.168.1.0 255.255.255.0 10.0.0.0 255.255.255.0 eq 53
+access-list DMZ_TO_INSIDE extended permit udp 192.168.1.0 255.255.255.0 10.0.0.0 255.255.255.0 eq 123
+access-list DMZ_TO_INSIDE extended permit tcp 192.168.1.0 255.255.255.0 10.0.0.0 255.255.255.0 eq 80
+access-list DMZ_TO_INSIDE extended permit tcp 192.168.1.0 255.255.255.0 10.0.0.0 255.255.255.0 eq 443
+access-list DMZ_TO_INSIDE extended permit tcp 192.168.1.0 255.255.255.0 10.0.0.0 255.255.255.0 eq 389
+access-list DMZ_TO_INSIDE extended permit tcp 192.168.1.0 255.255.255.0 10.0.0.0 255.255.255.0 eq 636
+access-list DMZ_TO_INSIDE extended permit tcp 192.168.1.0 255.255.255.0 10.0.0.0 255.255.255.0 eq 88
+access-list DMZ_TO_INSIDE extended permit tcp 192.168.1.0 255.255.255.0 10.0.0.0 255.255.255.0 eq 749
+access-list DMZ_TO_INSIDE extended permit tcp 192.168.1.0 255.255.255.0 10.0.0.0 255.255.255.0 eq 445
+access-list DMZ_TO_INSIDE extended permit tcp 192.168.1.0 255.255.255.0 10.0.0.0 255.255.255.0 eq 2049
+
+# Apply ACLs
+access-group OUTSIDE_IN in interface outside
+access-group DMZ_OUT in interface dmz
+access-group INSIDE_OUT in interface inside
+access-group DMZ_TO_INSIDE in interface dmz
